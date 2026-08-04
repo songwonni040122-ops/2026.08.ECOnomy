@@ -109,6 +109,12 @@ canvas{display:block; width:100%; height:100%; cursor:default;}
 #popup .close{float:right; padding:2px 8px; line-height:1.4; border-radius:8px;}
 #popup h3{font-size:16px; font-weight:700; margin-bottom:9px; padding-right:36px; letter-spacing:-.2px;}
 #popup .desc{line-height:1.6; margin-bottom:10px; color:var(--ink2);}
+.mapAbout{display:none; margin-top:9px; padding:10px 11px; border:1px solid var(--line); border-radius:10px;
+  background:rgba(255,255,255,.55); font-size:12.5px; line-height:1.7; color:var(--ink2);}
+.hubAbout{margin:2px 0 12px; padding:11px 12px; border:1px solid var(--line); border-radius:11px;
+  background:rgba(255,255,255,.5); line-height:1.72; color:var(--ink2);}
+.hubAbout .lead{display:block; font-size:11px; font-weight:700; letter-spacing:.04em; color:var(--muted); margin-bottom:5px;}
+.hubAbout .parent{display:block; margin-top:8px; padding-top:8px; border-top:1px solid rgba(120,155,190,.22); font-size:12.5px;}
 #popup h4{font-size:11px; color:var(--muted); margin:13px 0 6px; border-bottom:1px solid rgba(120,155,190,.22); padding-bottom:4px;}
 #tail{position:absolute; z-index:13; width:12px; height:12px; display:none;
   background:rgba(255,255,255,.84); border-left:1px solid rgba(255,255,255,.9); border-top:1px solid rgba(255,255,255,.9);
@@ -187,6 +193,7 @@ a.extlink .host{color:var(--muted); font-size:10px; margin-left:5px;}
   <section>
     <h2>지도</h2>
     <div class="maplist" id="mapList"></div>
+    <div id="mapAbout" class="mapAbout"></div>
   </section>
   <section>
     <h2>기업 유형</h2>
@@ -821,9 +828,19 @@ function renderDetail(){
     }).join("") + (members.length>40? `<div class="muted small" style="padding:4px 6px;">외 ${members.length-40}개</div>`:"");
     if(n.kind==="sector") extra = `<div class="btnrow"><button id="gotoMap">이 분야 지도로 이동</button></div>`;
     else extra = `<div class="btnrow"><button id="gotoMap">이 세부분야만 지도로 보기</button></div>`;
+    const sObj = DATA.sectors.find(s=>s.name===n.sector) || null;
+    const subTxt = (n.kind==="sub" && sObj && sObj.subAbout) ? sObj.subAbout[n.sub] : null;
+    const secTxt = sObj ? sObj.about : null;
+    const mainTxt = n.kind==="sector" ? secTxt : (subTxt || secTxt);
+    let aboutHtml = "";
+    if(mainTxt){
+      aboutHtml = `<div class="hubAbout"><span class="lead">${n.kind==="sector"?"이 분야는":"이 세부분야는"}</span>${esc(mainTxt)}` +
+        ((n.kind==="sub" && subTxt && secTxt)? `<span class="parent"><b>${esc(n.sector)}</b> · ${esc(secTxt)}</span>`:"") +
+        `</div>`;
+    }
     body.innerHTML = `<h3>${esc(n.name)}</h3>
       <div class="badges"><span class="badge hl">${n.kind==="sector"?"분야 허브":"세부분야 허브"}</span><span class="badge">소속 ${members.length}개</span></div>
-      ${extra}<h4>소속 기관</h4><div class="linklist">${membersHtml}</div>`;
+      ${aboutHtml}${extra}<h4>소속 기관</h4><div class="linklist">${membersHtml}</div>`;
     body.querySelector("#gotoMap").onclick = ()=>{
       setMap(n.sector);
       if(n.kind==="sub"){ state.subOn = new Set([n.sub]); refreshSubFilter(); rebuild(); }
@@ -924,6 +941,12 @@ function refreshMapButtons(){
   document.querySelectorAll("#mapList button").forEach(b=>{
     b.classList.toggle("active", b.dataset.map===state.map);
   });
+  const ab = document.getElementById("mapAbout");
+  if(ab){
+    const s = DATA.sectors.find(x=>x.name===state.map);
+    if(s && s.about){ ab.textContent = s.about; ab.style.display="block"; }
+    else { ab.textContent=""; ab.style.display="none"; }
+  }
 }
 function buildMapList(){
   const el = document.getElementById("mapList");
